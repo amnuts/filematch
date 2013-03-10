@@ -38,6 +38,7 @@
             this.picMatch1 = new System.Windows.Forms.PictureBox();
             this.picMatch2 = new System.Windows.Forms.PictureBox();
             this.labelInfoLine = new System.Windows.Forms.Label();
+            this.bgWorker = new System.ComponentModel.BackgroundWorker();
             ((System.ComponentModel.ISupportInitialize)(this.picMatch1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.picMatch2)).BeginInit();
             this.SuspendLayout();
@@ -127,6 +128,14 @@
             this.labelInfoLine.TabIndex = 9;
             this.labelInfoLine.Text = "Searching may take a long time - please be patient!";
             // 
+            // bgWorker
+            // 
+            this.bgWorker.WorkerReportsProgress = true;
+            this.bgWorker.WorkerSupportsCancellation = true;
+            this.bgWorker.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bgWorker_DoWork);
+            this.bgWorker.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bgWorker_ProgressChanged);
+            this.bgWorker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bgWorker_RunWorkerCompleted);
+            // 
             // FileMatchForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -163,6 +172,7 @@
         private System.Windows.Forms.PictureBox picMatch1;
         private System.Windows.Forms.PictureBox picMatch2;
         private System.Windows.Forms.Label labelInfoLine;
+        private System.ComponentModel.BackgroundWorker bgWorker;
 
     }
 }

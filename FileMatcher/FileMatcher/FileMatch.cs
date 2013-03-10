@@ -21,6 +21,8 @@ namespace FileMatcher
         public FileMatchForm()
         {
             InitializeComponent();
+            bgWorker.WorkerReportsProgress = true;
+            bgWorker.WorkerSupportsCancellation = true;
         }
 
         private void ChooseFolder(object sender, EventArgs e)
@@ -35,44 +37,15 @@ namespace FileMatcher
         private void FindMatches(object sender, EventArgs e)
         {
             isRecursive = cbkMatchRecursive.Checked;
-            string path = txtDirPath.Text;
+            prgMatching.Maximum = 100;
             prgMatching.Value = 0;
+            prgMatching.Visible = true;
             labelInfoLine.Text = "Searching may take a long time - please be patient!";
 
-            try
+
+            if (bgWorker.IsBusy != true)
             {
-                var files = from file 
-                    in Directory.EnumerateFiles(path, "*.jpg", (isRecursive 
-                        ? SearchOption.AllDirectories 
-                        : SearchOption.TopDirectoryOnly)
-                    )
-                    select new { File = file };
-                int total = files.Count();
-                prgMatching.Maximum = total;
-                prgMatching.Visible = true;
-                labelInfoLine.Text = String.Format("{0} file{1} found", total.ToString(), (total == 1 ? "" : "s"));
-                if (total < 2)
-                {
-                    labelInfoLine.Text += " - nothing with which to compare";
-                }
-                else
-                {
-                    labelInfoLine.Text += " - processing...";
-                    foreach (var f in files)
-                    {
-                        string md5 = ProcessFile(f.File);
-                        prgMatching.PerformStep();
-                    }
-                    labelInfoLine.Text = String.Format("{0} files processed", total.ToString());
-                }
-            }
-            catch (UnauthorizedAccessException UAEx)
-            {
-                Debug.WriteLine(UAEx.Message);
-            }
-            catch (PathTooLongException PathEx)
-            {
-                Debug.WriteLine(PathEx.Message);
+                bgWorker.RunWorkerAsync();
             }
 
 
@@ -109,6 +82,81 @@ namespace FileMatcher
             }
         }
         */
+
+        private void bgWorker_DoWork(object sender, DoWorkEventArgs e)
+        {
+            BackgroundWorker worker = sender as BackgroundWorker;
+
+            var files = from file
+                        in Directory.EnumerateFiles(txtDirPath.Text, "*.jpg", (isRecursive
+                            ? SearchOption.AllDirectories
+                            : SearchOption.TopDirectoryOnly)
+                        )
+                        select new { File = file };
+            int total = files.Count();
+
+            try
+            {
+                //labelInfoLine.Text = String.Format("{0} file{1} found", total.ToString(), (total == 1 ? "" : "s"));
+                if (total < 2)
+                {
+                    //labelInfoLine.Text += " - nothing with which to compare";
+                }
+                else
+                {
+                    //labelInfoLine.Text += " - processing...";
+                    int i = 0;
+                    e.Result = 0;
+                    foreach (var f in files)
+                    {
+                        if (worker.CancellationPending == true)
+                        {
+                            e.Cancel = true;
+                            break;
+                        }
+                        else
+                        {
+                            string md5 = ProcessFile(f.File);
+                            worker.ReportProgress((int)(i * 100 / total));
+                            ++i;
+                        }
+                    }
+                }
+                e.Result = total;
+            }
+            catch (UnauthorizedAccessException UAEx)
+            {
+                Debug.WriteLine(UAEx.Message);
+            }
+            catch (PathTooLongException PathEx)
+            {
+                Debug.WriteLine(PathEx.Message);
+            }
+        }
+
+        // This event handler updates the progress. 
+        private void bgWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            prgMatching.Value = e.ProgressPercentage;
+        }
+
+        // This event handler deals with the results of the background operation. 
+        private void bgWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            prgMatching.Visible = false;
+            if (e.Cancelled == true)
+            {
+                labelInfoLine.Text = "Canceled!";
+            }
+            else if (e.Error != null)
+            {
+                labelInfoLine.Text = "Error: " + e.Error.Message;
+            }
+            else
+            {
+                labelInfoLine.Text = String.Format("{0} files processed", e.Result.ToString());
+            }
+        }
 
         public string ProcessFile(string path)
         {
