@@ -42,50 +42,16 @@ namespace FileMatcher
             prgMatching.Visible = true;
             labelInfoLine.Text = "Searching may take a long time - please be patient!";
 
-
             if (bgWorker.IsBusy != true)
             {
                 bgWorker.RunWorkerAsync();
             }
-
-
-
-            /*
-            if (Directory.Exists(path))
-            {
-                // This path is a directory
-                ProcessDirectory(path);
-            }
-            else
-            {
-                Debug.WriteLine("{0} is not a valid file or directory.", txtDirPath);
-            }
-            */
         }
-
-        /*
-        public void ProcessDirectory(string targetDirectory)
-        {
-            string[] fileEntries = Directory.GetFiles(targetDirectory);
-            foreach (string fileName in fileEntries)
-            {
-                ProcessFile(fileName);
-            }
-
-            if (isRecursive)
-            {
-                string[] subdirectoryEntries = Directory.GetDirectories(targetDirectory);
-                foreach (string subdirectory in subdirectoryEntries)
-                {
-                    ProcessDirectory(subdirectory);
-                }
-            }
-        }
-        */
 
         private void bgWorker_DoWork(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
+            Dictionary<string, string> hashed = new Dictionary<string, string> { };
 
             var files = from file
                         in Directory.EnumerateFiles(txtDirPath.Text, "*.jpg", (isRecursive
@@ -97,14 +63,8 @@ namespace FileMatcher
 
             try
             {
-                //labelInfoLine.Text = String.Format("{0} file{1} found", total.ToString(), (total == 1 ? "" : "s"));
-                if (total < 2)
+                if (total > 2)
                 {
-                    //labelInfoLine.Text += " - nothing with which to compare";
-                }
-                else
-                {
-                    //labelInfoLine.Text += " - processing...";
                     int i = 0;
                     e.Result = 0;
                     foreach (var f in files)
@@ -117,12 +77,13 @@ namespace FileMatcher
                         else
                         {
                             string md5 = ProcessFile(f.File);
+                            hashed[md5] = (string)f.File;
                             worker.ReportProgress((int)(i * 100 / total));
                             ++i;
                         }
                     }
                 }
-                e.Result = total;
+                e.Result = hashed;
             }
             catch (UnauthorizedAccessException UAEx)
             {
@@ -134,15 +95,15 @@ namespace FileMatcher
             }
         }
 
-        // This event handler updates the progress. 
         private void bgWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             prgMatching.Value = e.ProgressPercentage;
         }
 
-        // This event handler deals with the results of the background operation. 
         private void bgWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
+            Dictionary<string, string> results = e.Result as Dictionary<string, string>;
+
             prgMatching.Visible = false;
             if (e.Cancelled == true)
             {
@@ -154,7 +115,7 @@ namespace FileMatcher
             }
             else
             {
-                labelInfoLine.Text = String.Format("{0} files processed", e.Result.ToString());
+                labelInfoLine.Text = String.Format("{0} files processed", results.Count());
             }
         }
 
