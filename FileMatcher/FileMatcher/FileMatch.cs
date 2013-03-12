@@ -59,6 +59,7 @@ namespace FileMatcher
                             ? SearchOption.AllDirectories
                             : SearchOption.TopDirectoryOnly)
                         )
+                        orderby file.Length
                         select new { File = file };
             int total = files.Count();
 
@@ -119,6 +120,26 @@ namespace FileMatcher
             Debug.Print("{0}", e.Result);
 
             FileMatchResults fmr = e.Result as FileMatchResults;
+
+            treeResults.BeginUpdate();
+
+            treeResults.Nodes.Clear();
+
+            int i = 0;
+            foreach (var same in fmr.grouped)
+            {
+                treeResults.Nodes.Add(new TreeNode(fmr.hashed[same.Key]));
+                foreach (var f in fmr.grouped[same.Key])
+                {
+                    treeResults.Nodes[i].Nodes.Add(new TreeNode(f));
+                }
+                ++i;
+            }
+
+            Cursor.Current = Cursors.Default;
+            treeResults.EndUpdate();
+            treeResults.Enabled = true;
+
 
             foreach (var same in fmr.grouped)
             {

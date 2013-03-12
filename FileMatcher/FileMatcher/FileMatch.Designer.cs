@@ -72,11 +72,12 @@
             // cbkMatchRecursive
             // 
             this.cbkMatchRecursive.AutoSize = true;
-            this.cbkMatchRecursive.Location = new System.Drawing.Point(426, 17);
+            this.cbkMatchRecursive.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.cbkMatchRecursive.Location = new System.Drawing.Point(360, 18);
             this.cbkMatchRecursive.Name = "cbkMatchRecursive";
-            this.cbkMatchRecursive.Size = new System.Drawing.Size(69, 17);
+            this.cbkMatchRecursive.Size = new System.Drawing.Size(135, 17);
             this.cbkMatchRecursive.TabIndex = 4;
-            this.cbkMatchRecursive.Text = "recursive";
+            this.cbkMatchRecursive.Text = "Include subdirectories?";
             this.cbkMatchRecursive.UseVisualStyleBackColor = true;
             // 
             // btnFindMatches
