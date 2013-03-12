@@ -52,6 +52,7 @@ namespace FileMatcher
         {
             BackgroundWorker worker = sender as BackgroundWorker;
             Dictionary<string, string> hashed = new Dictionary<string, string> { };
+            Dictionary<string, List<string>> grouped = new Dictionary<string, List<string>> { };
 
             var files = from file
                         in Directory.EnumerateFiles(txtDirPath.Text, "*.jpg", (isRecursive
@@ -77,13 +78,26 @@ namespace FileMatcher
                         else
                         {
                             string md5 = ProcessFile(f.File);
-                            hashed[md5] = (string)f.File;
+                            if (grouped.ContainsKey(md5))
+                            {
+                                grouped[md5].Add(f.File);
+                            }
+                            else
+                            {
+                                hashed[md5] = (string)f.File;
+                                grouped[md5] = new List<string>();
+                            }
                             worker.ReportProgress((int)(i * 100 / total));
                             ++i;
                         }
                     }
                 }
-                e.Result = hashed;
+                FileMatchResults fmr = new FileMatchResults();
+                fmr.hashed = hashed;
+                fmr.grouped = grouped.Where(pair => pair.Value.Count() > 0)
+                                 .ToDictionary(pair => pair.Key,
+                                               pair => pair.Value);
+                e.Result = fmr;
             }
             catch (UnauthorizedAccessException UAEx)
             {
@@ -102,7 +116,18 @@ namespace FileMatcher
 
         private void bgWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            Dictionary<string, string> results = e.Result as Dictionary<string, string>;
+            Debug.Print("{0}", e.Result);
+
+            FileMatchResults fmr = e.Result as FileMatchResults;
+
+            foreach (var same in fmr.grouped)
+            {
+                Debug.Print("k = {0}", same.Key);
+                foreach (var f in fmr.grouped[same.Key])
+                {
+                    Debug.Print("\tf = {0}", f);
+                }
+            }
 
             prgMatching.Visible = false;
             if (e.Cancelled == true)
@@ -115,7 +140,7 @@ namespace FileMatcher
             }
             else
             {
-                labelInfoLine.Text = String.Format("{0} files processed", results.Count());
+                labelInfoLine.Text = String.Format("{0} files processed, {1} duplicate(s)", fmr.hashed.Count(), fmr.grouped.Count());
             }
         }
 
@@ -131,7 +156,7 @@ namespace FileMatcher
             {
                 sb.Append(retVal[i].ToString("x2"));
             }
-            Debug.WriteLine("Processed file '{0}'.", path);
+            Debug.Print("Processed file '{0}'.", path);
             return sb.ToString();
         }
 
