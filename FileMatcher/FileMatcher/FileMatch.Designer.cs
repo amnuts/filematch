@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.prgMatching = new System.Windows.Forms.ProgressBar();
             this.dlogDirSelect = new System.Windows.Forms.FolderBrowserDialog();
             this.btnDirSelect = new System.Windows.Forms.Button();
@@ -39,8 +40,14 @@
             this.picMatch2 = new System.Windows.Forms.PictureBox();
             this.labelInfoLine = new System.Windows.Forms.Label();
             this.bgWorker = new System.ComponentModel.BackgroundWorker();
+            this.picMatchInfo1 = new System.Windows.Forms.Label();
+            this.picMatchInfo2 = new System.Windows.Forms.Label();
+            this.resultsContextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.openMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.deleteMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.picMatch1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.picMatch2)).BeginInit();
+            this.resultsContextMenu.SuspendLayout();
             this.SuspendLayout();
             // 
             // prgMatching
@@ -72,12 +79,11 @@
             // cbkMatchRecursive
             // 
             this.cbkMatchRecursive.AutoSize = true;
-            this.cbkMatchRecursive.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-            this.cbkMatchRecursive.Location = new System.Drawing.Point(360, 18);
+            this.cbkMatchRecursive.Location = new System.Drawing.Point(370, 18);
             this.cbkMatchRecursive.Name = "cbkMatchRecursive";
-            this.cbkMatchRecursive.Size = new System.Drawing.Size(135, 17);
+            this.cbkMatchRecursive.Size = new System.Drawing.Size(129, 17);
             this.cbkMatchRecursive.TabIndex = 4;
-            this.cbkMatchRecursive.Text = "Include subdirectories?";
+            this.cbkMatchRecursive.Text = "Include subdirectories";
             this.cbkMatchRecursive.UseVisualStyleBackColor = true;
             // 
             // btnFindMatches
@@ -98,6 +104,7 @@
             this.treeResults.Name = "treeResults";
             this.treeResults.Size = new System.Drawing.Size(482, 361);
             this.treeResults.TabIndex = 6;
+            this.treeResults.MouseUp += new System.Windows.Forms.MouseEventHandler(this.treeResults_MouseUp);
             // 
             // picMatch1
             // 
@@ -105,7 +112,7 @@
             this.picMatch1.InitialImage = null;
             this.picMatch1.Location = new System.Drawing.Point(509, 69);
             this.picMatch1.Name = "picMatch1";
-            this.picMatch1.Size = new System.Drawing.Size(212, 178);
+            this.picMatch1.Size = new System.Drawing.Size(212, 159);
             this.picMatch1.TabIndex = 7;
             this.picMatch1.TabStop = false;
             // 
@@ -115,7 +122,7 @@
             this.picMatch2.InitialImage = null;
             this.picMatch2.Location = new System.Drawing.Point(509, 252);
             this.picMatch2.Name = "picMatch2";
-            this.picMatch2.Size = new System.Drawing.Size(212, 178);
+            this.picMatch2.Size = new System.Drawing.Size(212, 159);
             this.picMatch2.TabIndex = 8;
             this.picMatch2.TabStop = false;
             // 
@@ -125,9 +132,9 @@
             this.labelInfoLine.Location = new System.Drawing.Point(11, 445);
             this.labelInfoLine.MinimumSize = new System.Drawing.Size(248, 13);
             this.labelInfoLine.Name = "labelInfoLine";
-            this.labelInfoLine.Size = new System.Drawing.Size(248, 13);
+            this.labelInfoLine.Size = new System.Drawing.Size(283, 13);
             this.labelInfoLine.TabIndex = 9;
-            this.labelInfoLine.Text = "Searching may take a long time - please be patient!";
+            this.labelInfoLine.Text = "Select a directory and find matches - it may take some time";
             // 
             // bgWorker
             // 
@@ -137,11 +144,50 @@
             this.bgWorker.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.bgWorker_ProgressChanged);
             this.bgWorker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bgWorker_RunWorkerCompleted);
             // 
+            // picMatchInfo1
+            // 
+            this.picMatchInfo1.Location = new System.Drawing.Point(506, 232);
+            this.picMatchInfo1.Name = "picMatchInfo1";
+            this.picMatchInfo1.Size = new System.Drawing.Size(212, 13);
+            this.picMatchInfo1.TabIndex = 10;
+            // 
+            // picMatchInfo2
+            // 
+            this.picMatchInfo2.Location = new System.Drawing.Point(506, 415);
+            this.picMatchInfo2.Name = "picMatchInfo2";
+            this.picMatchInfo2.Size = new System.Drawing.Size(212, 13);
+            this.picMatchInfo2.TabIndex = 11;
+            // 
+            // resultsContextMenu
+            // 
+            this.resultsContextMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.openMenuItem,
+            this.deleteMenuItem});
+            this.resultsContextMenu.Name = "resultsContextMenu";
+            this.resultsContextMenu.Size = new System.Drawing.Size(184, 48);
+            // 
+            // openMenuItem
+            // 
+            this.openMenuItem.Name = "openMenuItem";
+            this.openMenuItem.Size = new System.Drawing.Size(183, 22);
+            this.openMenuItem.Text = "Open folder location";
+            this.openMenuItem.Click += new System.EventHandler(this.openFileLocation_Click);
+            // 
+            // deleteMenuItem
+            // 
+            this.deleteMenuItem.Enabled = false;
+            this.deleteMenuItem.Name = "deleteMenuItem";
+            this.deleteMenuItem.Size = new System.Drawing.Size(183, 22);
+            this.deleteMenuItem.Text = "Delete item";
+            this.deleteMenuItem.Click += new System.EventHandler(this.deleteFile_Click);
+            // 
             // FileMatchForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(734, 472);
+            this.Controls.Add(this.picMatchInfo2);
+            this.Controls.Add(this.picMatchInfo1);
             this.Controls.Add(this.labelInfoLine);
             this.Controls.Add(this.picMatch2);
             this.Controls.Add(this.picMatch1);
@@ -156,6 +202,7 @@
             this.Text = "File Matcher";
             ((System.ComponentModel.ISupportInitialize)(this.picMatch1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.picMatch2)).EndInit();
+            this.resultsContextMenu.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -174,6 +221,11 @@
         private System.Windows.Forms.PictureBox picMatch2;
         private System.Windows.Forms.Label labelInfoLine;
         private System.ComponentModel.BackgroundWorker bgWorker;
+        private System.Windows.Forms.Label picMatchInfo1;
+        private System.Windows.Forms.Label picMatchInfo2;
+        private System.Windows.Forms.ContextMenuStrip resultsContextMenu;
+        private System.Windows.Forms.ToolStripMenuItem openMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem deleteMenuItem;
 
     }
 }
