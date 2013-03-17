@@ -11,6 +11,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Threading;
+using Microsoft.VisualBasic.FileIO;
 
 namespace FileMatcher
 {
@@ -19,6 +20,7 @@ namespace FileMatcher
         private bool isRecursive;
         private Bitmap bitmapMatch1;
         private Bitmap bitmapMatch2;
+        private int totalMatch;
 
         public FileMatchForm()
         {
@@ -27,7 +29,10 @@ namespace FileMatcher
             bgWorker.WorkerSupportsCancellation = true;
         }
 
-        private void ChooseFolder(object sender, EventArgs e)
+        /**
+         * Handles selecting a directory path
+         */
+        private void chooseFolder_Click(object sender, EventArgs e)
         {
             if (dlogDirSelect.ShowDialog() == DialogResult.OK)
             {
@@ -36,38 +41,54 @@ namespace FileMatcher
             }
         }
 
-        private void FindMatches(object sender, EventArgs e)
+        /**
+         * Starts the search process, placing the main bulk of the processing
+         * in to a background process.
+         */
+        private void findMatches_Click(object sender, EventArgs e)
         {
+            cleanupBitmaps();
+            if (treeResults.Nodes.Count > 0)
+            {
+                treeResults.BeginUpdate();
+                treeResults.Nodes.Clear();
+                treeResults.Enabled = false;
+                treeResults.EndUpdate();
+            }
+            totalMatch = 0;
             isRecursive = cbkMatchRecursive.Checked;
             prgMatching.Maximum = 100;
             prgMatching.Value = 0;
             prgMatching.Visible = true;
             labelInfoLine.Text = "Searching may take a long time - please be patient!";
-
             if (bgWorker.IsBusy != true)
             {
                 bgWorker.RunWorkerAsync();
             }
         }
 
+        /**
+         * The background process thread.
+         */
         private void bgWorker_DoWork(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
             Dictionary<string, string> hashed = new Dictionary<string, string> { };
             Dictionary<string, List<string>> grouped = new Dictionary<string, List<string>> { };
+            List<string> failed = new List<string> { };
 
             var files = from file
                         in Directory.EnumerateFiles(txtDirPath.Text, "*.jpg", (isRecursive
-                            ? SearchOption.AllDirectories
-                            : SearchOption.TopDirectoryOnly)
+                            ? System.IO.SearchOption.AllDirectories
+                            : System.IO.SearchOption.TopDirectoryOnly)
                         )
                         orderby file.Length
                         select new { File = file };
-            int total = files.Count();
+            totalMatch = files.Count();
 
             try
             {
-                if (total > 2)
+                if (totalMatch > 2)
                 {
                     int i = 0;
                     e.Result = 0;
@@ -80,22 +101,27 @@ namespace FileMatcher
                         }
                         else
                         {
-                            string md5 = ProcessFile(f.File);
-                            if (grouped.ContainsKey(md5))
-                            {
-                                grouped[md5].Add(f.File);
+                            string md5 = generateFileHash(f.File);
+                            if (md5 == "") {
+                                failed.Add(f.File);
+                            } else {
+                                if (grouped.ContainsKey(md5))
+                                {
+                                    grouped[md5].Add(f.File);
+                                }
+                                else
+                                {
+                                    hashed[md5] = (string)f.File;
+                                    grouped[md5] = new List<string>();
+                                }
                             }
-                            else
-                            {
-                                hashed[md5] = (string)f.File;
-                                grouped[md5] = new List<string>();
-                            }
-                            worker.ReportProgress((int)(i * 100 / total));
+                            worker.ReportProgress(i);
                             ++i;
                         }
                     }
                 }
                 FileMatchResults fmr = new FileMatchResults();
+                fmr.failed = failed;
                 fmr.hashed = hashed;
                 fmr.grouped = grouped.Where(pair => pair.Value.Count() > 0)
                                  .ToDictionary(pair => pair.Key, pair => pair.Value);
@@ -111,11 +137,21 @@ namespace FileMatcher
             }
         }
 
+        /**
+         * Change the information and progress bar when the background process
+         * makes an update.
+         */
         private void bgWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            prgMatching.Value = e.ProgressPercentage;
+            prgMatching.Value = (int)(e.ProgressPercentage * 100 / totalMatch);
+            labelInfoLine.Text = String.Format("Attempting to process file {0} out of {1}",
+                    e.ProgressPercentage, totalMatch);
         }
 
+        /**
+         * Handle the building of the results tree when the background process
+         * has gathered all required information.
+         */
         private void bgWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             FileMatchResults fmr = e.Result as FileMatchResults;
@@ -125,7 +161,7 @@ namespace FileMatcher
             } else if (e.Error != null) {
                 labelInfoLine.Text = "Error: " + e.Error.Message;
             } else {
-                labelInfoLine.Text = String.Format("{0} file{1} processed, {2} duplicate{3}",
+                labelInfoLine.Text = String.Format("{0} unique file{1}, {2} duplicate{3}",
                     fmr.hashed.Count(), (fmr.hashed.Count() == 1 ? "" : "s"),
                     fmr.grouped.Count(), (fmr.grouped.Count() == 1 ? "" : "s"));
             }
@@ -158,23 +194,9 @@ namespace FileMatcher
             prgMatching.Visible = false;
         }
 
-        public string ProcessFile(string path)
-        {
-            FileStream file = new FileStream(path, FileMode.Open);
-            MD5 md5 = new MD5CryptoServiceProvider();
-            byte[] retVal = md5.ComputeHash(file);
-            file.Close();
-            file.Dispose();
-
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < retVal.Length; i++)
-            {
-                sb.Append(retVal[i].ToString("x2"));
-            }
-            Debug.Print("Processed file '{0}'.", path);
-            return sb.ToString();
-        }
-
+        /**
+         * Handle clicking on tree view nodes.
+         */
         private void treeResults_MouseUp(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right)
@@ -182,43 +204,32 @@ namespace FileMatcher
                 treeResults.SelectedNode = treeResults.GetNodeAt(e.X, e.Y);
                 if (treeResults.SelectedNode != null)
                 {
+                    //deleteMenuItem.Enabled = (treeResults.SelectedNode.Level > 0);
                     treeResults.ContextMenuStrip.Show(treeResults, e.Location);
                 }
             }
         }
 
+        /**
+         * Handle selection of tree view nodes.
+         */
         private void treeResults_AfterSelect(object sender, TreeViewEventArgs e)
         {
-            if (bitmapMatch1 != null)
-            {
-                bitmapMatch1.Dispose();
-            }
-            if (bitmapMatch2 != null)
-            {
-                bitmapMatch2.Dispose();
-            }
-
-            picMatch1.Image = null;
-            picMatch2.Image = null;
-            picMatchInfo1.Text = null;
-            picMatchInfo2.Text = null;
+            cleanupBitmaps();
 
             if (treeResults.SelectedNode.Level == 0)
             {
                 picMatch1.SizeMode = PictureBoxSizeMode.Zoom;
-                bitmapMatch1 = new Bitmap(treeResults.SelectedNode.Text);
-                picMatch1.Image = (Image)bitmapMatch1;
+                picMatch1.Image = Image.FromFile(treeResults.SelectedNode.Text);
                 FileInfo fi1 = new FileInfo(treeResults.SelectedNode.Text);
                 picMatchInfo1.Text = String.Format("Size: {0} / Modified: {1}", bytesToString(fi1.Length), fi1.LastWriteTime);
             }
             else
             {
                 picMatch1.SizeMode = PictureBoxSizeMode.Zoom;
-                bitmapMatch1 = new Bitmap(treeResults.SelectedNode.Parent.Text);
-                picMatch1.Image = (Image)bitmapMatch1;
                 picMatch2.SizeMode = PictureBoxSizeMode.Zoom;
-                bitmapMatch2 = new Bitmap(treeResults.SelectedNode.Text);
-                picMatch2.Image = (Image)bitmapMatch2;
+                picMatch1.Image = Image.FromFile(treeResults.SelectedNode.Text);
+                picMatch2.Image = Image.FromFile(treeResults.SelectedNode.Text);
                 FileInfo fi1 = new FileInfo(treeResults.SelectedNode.Parent.Text);
                 picMatchInfo1.Text = String.Format("Size: {0} / Modified: {1}", bytesToString(fi1.Length), fi1.LastWriteTime);
                 FileInfo fi2 = new FileInfo(treeResults.SelectedNode.Text);
@@ -226,6 +237,116 @@ namespace FileMatcher
             }
         }
 
+        /**
+         * Open a file from the context menu
+         */
+        private void openFile_ContextClick(object sender, EventArgs e)
+        {
+            TreeNode treeNode = this.treeResults.SelectedNode;
+            if (File.Exists(treeNode.Text))
+            {
+                Process.Start("explorer.exe", "/select, \"" + treeNode.Text + "\"");
+            }
+        }
+
+        /**
+         * Delete a file from the context menu
+         */
+        private void deleteFile_ContextClick(object sender, EventArgs e)
+        {
+            try
+            {
+                cleanupBitmaps();
+                FileSystem.DeleteFile(
+                    treeResults.SelectedNode.Text,
+                    UIOption.AllDialogs,
+                    RecycleOption.SendToRecycleBin,
+                    UICancelOption.ThrowException
+                );
+                if (treeResults.SelectedNode.Level > 0)
+                {
+                    TreeNode parent = treeResults.SelectedNode.Parent;
+                    treeResults.Nodes.Remove(treeResults.SelectedNode);
+                    if (parent.Nodes.Count < 1)
+                    {
+                        treeResults.Nodes.Remove(parent);
+                    }
+                }
+                else
+                {
+                    treeResults.Nodes.Remove(treeResults.SelectedNode);
+                }
+            }
+            catch (OperationCanceledException ex) { }
+        }
+
+        /**
+         * Read the given file (if possible) and generate an MD5 hash of the
+         * file contents.  Returns an empty string if the hash cannot be 
+         * generated for some reason.
+         */
+        private string generateFileHash(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    FileStream file = new FileStream(path, FileMode.Open);
+                    MD5 md5 = new MD5CryptoServiceProvider();
+                    byte[] retVal = md5.ComputeHash(file);
+                    file.Close();
+                    file = null;
+
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < retVal.Length; i++)
+                    {
+                        sb.Append(retVal[i].ToString("x2"));
+                    }
+                    Debug.Print("Processed file '{0}'.", path);
+                    return sb.ToString();
+                }
+                else
+                {
+                    return "";
+                }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return "";
+            }
+        }
+
+        /**
+         * Clean up bitmap images and related labels
+         */
+        private void cleanupBitmaps()
+        {
+            if (bitmapMatch1 != null)
+            {
+                bitmapMatch1.Dispose();
+                bitmapMatch1 = null;
+            }
+            if (bitmapMatch2 != null)
+            {
+                bitmapMatch2.Dispose();
+                bitmapMatch2 = null;
+            }
+            if (picMatch1.Image != null) {
+                picMatch1.Image.Dispose();
+                picMatch1.Image = null;
+            }
+            if (picMatch2.Image != null)
+            {
+                picMatch2.Image.Dispose();
+                picMatch2.Image = null;
+            }
+            picMatchInfo1.Text = null;
+            picMatchInfo2.Text = null;
+        }
+
+        /**
+         * Convert byte number to a more readable string
+         */
         private static string bytesToString(double bytes)
         {
             string[] sizes = { "B", "KB", "MB", "GB", "TB", "PB" };
@@ -237,44 +358,5 @@ namespace FileMatcher
             }
             return String.Format("{0:0.##}{1}", bytes, sizes[order]);
         }
-
-        private void openFileLocation_Click(object sender, EventArgs e)
-        {
-            TreeNode treeNode = this.treeResults.SelectedNode;
-            if (File.Exists(treeNode.Text))
-            {
-                Process.Start("explorer.exe", "/select, \"" + treeNode.Text + "\"");
-            }
-        }
-
-        private void deleteFile_Click(object sender, EventArgs e)
-        {
-            if (MessageBox.Show("Are you sure you want to delete that file?", "Confirm delete", MessageBoxButtons.YesNo) == DialogResult.Yes)
-            {
-                TreeNode parent = this.treeResults.SelectedNode.Parent;
-                this.treeResults.Nodes.Remove(this.treeResults.SelectedNode);
-                if (bitmapMatch1 != null)
-                {
-                    bitmapMatch1.Dispose();
-                }
-                if (bitmapMatch2 != null)
-                {
-                    bitmapMatch2.Dispose();
-                }
-
-                picMatch1.Image = null;
-                picMatch2.Image = null;
-                picMatchInfo1.Text = null;
-                picMatchInfo2.Text = null;
-
-                /** @todo implement recycle bin delete */
-
-                if (parent.Nodes.Count < 1)
-                {
-                    this.treeResults.Nodes.Remove(parent);
-                }
-            }
-        }
-
     }
 }

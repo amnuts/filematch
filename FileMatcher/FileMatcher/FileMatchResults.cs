@@ -9,5 +9,6 @@ namespace FileMatcher
     {
         public Dictionary<string, string> hashed { get; set; }
         public Dictionary<string, List<string>> grouped { get; set; }
+        public List<string> failed { get; set; }
     }
 }

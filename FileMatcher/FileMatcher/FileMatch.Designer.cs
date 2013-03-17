@@ -52,9 +52,9 @@
             // 
             // prgMatching
             // 
-            this.prgMatching.Location = new System.Drawing.Point(622, 443);
+            this.prgMatching.Location = new System.Drawing.Point(509, 445);
             this.prgMatching.Name = "prgMatching";
-            this.prgMatching.Size = new System.Drawing.Size(100, 17);
+            this.prgMatching.Size = new System.Drawing.Size(213, 15);
             this.prgMatching.Step = 1;
             this.prgMatching.TabIndex = 1;
             this.prgMatching.Visible = false;
@@ -67,7 +67,7 @@
             this.btnDirSelect.TabIndex = 2;
             this.btnDirSelect.Text = "Select a folder";
             this.btnDirSelect.UseVisualStyleBackColor = true;
-            this.btnDirSelect.Click += new System.EventHandler(this.ChooseFolder);
+            this.btnDirSelect.Click += new System.EventHandler(this.chooseFolder_Click);
             // 
             // txtDirPath
             // 
@@ -95,7 +95,7 @@
             this.btnFindMatches.TabIndex = 5;
             this.btnFindMatches.Text = "Find matches";
             this.btnFindMatches.UseVisualStyleBackColor = true;
-            this.btnFindMatches.Click += new System.EventHandler(this.FindMatches);
+            this.btnFindMatches.Click += new System.EventHandler(this.findMatches_Click);
             // 
             // treeResults
             // 
@@ -171,15 +171,14 @@
             this.openMenuItem.Name = "openMenuItem";
             this.openMenuItem.Size = new System.Drawing.Size(183, 22);
             this.openMenuItem.Text = "Open folder location";
-            this.openMenuItem.Click += new System.EventHandler(this.openFileLocation_Click);
+            this.openMenuItem.Click += new System.EventHandler(this.openFile_ContextClick);
             // 
             // deleteMenuItem
             // 
-            this.deleteMenuItem.Enabled = false;
             this.deleteMenuItem.Name = "deleteMenuItem";
             this.deleteMenuItem.Size = new System.Drawing.Size(183, 22);
             this.deleteMenuItem.Text = "Delete item";
-            this.deleteMenuItem.Click += new System.EventHandler(this.deleteFile_Click);
+            this.deleteMenuItem.Click += new System.EventHandler(this.deleteFile_ContextClick);
             // 
             // FileMatchForm
             // 
