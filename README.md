@@ -12,7 +12,7 @@ _Currently the code is set up to find only duplicate jpg files._
 * Select your directory
 * Choose if you want to match within all subdirectories
 * Click on the big button and wait a while (a long while if it's a lot of images!)
-* Review the duplicate files in the tree and right-click to open the folder location or delete the image (_deleting an image will send it to the recycle bin_)
+* Review the duplicate files in the tree and right-click to open the folder location or delete the image (deleting an image will send it to the recycle bin)
 
 ### Feedback
 
